@@ -2,9 +2,18 @@
   "name": "compare-with-previous",
   "displayName": "IntelliJ-Style Git Tools",
   "description": "IntelliJ-style Git for VS Code: compare with previous/any revision, git blame annotations, and a file-history panel with per-commit diffs.",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "publisher": "jackle",
   "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/trilh-dev/vscode-intellij-git-tools.git"
+  },
+  "bugs": {
+    "url": "https://github.com/trilh-dev/vscode-intellij-git-tools/issues"
+  },
+  "homepage": "https://github.com/trilh-dev/vscode-intellij-git-tools#readme",
   "engines": {
     "vscode": "^1.75.0"
   },
