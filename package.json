@@ -1,0 +1,126 @@
+{
+  "name": "compare-with-previous",
+  "displayName": "IntelliJ-Style Git Tools",
+  "description": "IntelliJ-style Git for VS Code: compare with previous/any revision, git blame annotations, and a file-history panel with per-commit diffs.",
+  "version": "0.6.0",
+  "publisher": "jackle",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "diff",
+    "compare",
+    "history",
+    "intellij"
+  ],
+  "activationEvents": [],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cwp.compareWithPrevious",
+        "title": "Compare with Previous Version",
+        "category": "Git"
+      },
+      {
+        "command": "cwp.compareWithRevision",
+        "title": "Compare with Revision...",
+        "category": "Git"
+      },
+      {
+        "command": "cwp.toggleBlame",
+        "title": "Annotate with Git Blame (Toggle)",
+        "category": "Git"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "cwp.submenu",
+        "label": "Compare"
+      }
+    ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "cwpHistory",
+          "title": "File History",
+          "icon": "$(history)"
+        }
+      ]
+    },
+    "views": {
+      "cwpHistory": [
+        {
+          "id": "cwpFileHistory",
+          "name": "File History"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "cwpFileHistory",
+        "contents": "Toggle Git Blame on a file (right-click the line-number gutter → Annotate with Git Blame), then click a line to see its commit history here.\nSelect a commit to open its full message and diff."
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "submenu": "cwp.submenu",
+          "group": "3_compare@1",
+          "when": "resourceScheme == file && !explorerResourceIsFolder"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "cwp.submenu",
+          "group": "1_modification@100",
+          "when": "resourceScheme == file"
+        }
+      ],
+      "editor/lineNumber/context": [
+        {
+          "command": "cwp.toggleBlame",
+          "group": "1_blame@1",
+          "when": "resourceScheme == file"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "submenu": "cwp.submenu",
+          "group": "1_compare@1",
+          "when": "resourceScheme == file"
+        }
+      ],
+      "cwp.submenu": [
+        {
+          "command": "cwp.compareWithPrevious",
+          "group": "1_compare@1"
+        },
+        {
+          "command": "cwp.compareWithRevision",
+          "group": "1_compare@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "cwp.compareWithPrevious",
+          "when": "editorIsOpen"
+        },
+        {
+          "command": "cwp.compareWithRevision",
+          "when": "editorIsOpen"
+        },
+        {
+          "command": "cwp.toggleBlame",
+          "when": "editorIsOpen"
+        }
+      ]
+    }
+  }
+}
