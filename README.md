@@ -22,6 +22,21 @@ Right-click a file in the **Explorer**, the **editor**, or an **editor tab** →
 
 Both commands are also available from the Command Palette (`Git: Compare …`).
 
+### Compare a whole folder
+
+Right-click a **folder** in the **Explorer** → **Compare** submenu:
+
+- **Compare Folder with Previous Version** — every changed file under the folder
+  opens together in VS Code's **multi-file diff editor**.
+  - If the folder has uncommitted changes, diffs `HEAD` against the working tree.
+  - If it's clean, diffs the previous commit that touched the folder against the
+    latest one.
+- **Compare Folder with Revision…** — pick any commit that touched the folder
+  (author, date, hash, message) and diff that revision's folder state against the
+  working tree.
+
+Untracked (never-committed) files are not included in folder diffs.
+
 ### Git Blame annotations
 
 Right-click the **line-number gutter** → **Annotate with Git Blame (Toggle)**
@@ -65,4 +80,4 @@ code --install-extension compare-with-previous-0.5.0.vsix
 ## Requirements
 
 - `git` on your `PATH`.
-- VS Code 1.75+.
+- VS Code 1.85+ (the multi-file diff editor used by folder compares).

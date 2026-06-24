@@ -1,4 +1,6 @@
 .vscode/**
+.claude/**
 .gitignore
 jsconfig.json
 **/*.map
+**/*.vsix

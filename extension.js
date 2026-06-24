@@ -216,6 +216,184 @@ async function compareWithRevision(resource) {
 }
 
 /**
+ * Read the commits that touched anything under a folder, newest first.
+ * Unlike fileHistory(), this never uses --follow (which is file-only and
+ * errors on a directory pathspec). An empty relPath means the whole repo.
+ */
+async function folderHistory(repo, relPath, limit) {
+  const fmt = ['%H', '%an', '%ae', '%ad', '%s'].join(SEP);
+  const args = ['log', `-n${limit}`, `--format=${fmt}`, '--date=short'];
+  if (relPath) args.push('--', relPath);
+  const out = await git(args, repo);
+  if (!out) return [];
+  return out.split('\n').map((line) => {
+    const [hash, author, email, date, subject] = line.split(SEP);
+    return { hash, author, email, date, subject };
+  });
+}
+
+/** Parse `git diff --name-status -M` output into change entries. */
+function parseNameStatus(out) {
+  return out
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split('\t');
+      const status = parts[0];
+      const renamed = /^[RC]/.test(status);
+      return {
+        status,
+        path: renamed ? parts[2] : parts[1],
+        oldPath: renamed ? parts[1] : undefined
+      };
+    });
+}
+
+/**
+ * List the files that differ for a folder across a git range.
+ * `range` is the revision arguments for `git diff` (e.g. ['HEAD'],
+ * [prev, head] or [rev]); an empty relPath scopes to the whole repo.
+ */
+async function folderChanges(repo, relPath, range) {
+  const args = ['diff', '--name-status', '-M', ...range];
+  if (relPath) args.push('--', relPath);
+  let out = '';
+  try {
+    out = await git(args, repo);
+  } catch {
+    out = '';
+  }
+  return parseNameStatus(out);
+}
+
+/** True when tracked files under a folder differ from HEAD (untracked ignored). */
+async function isFolderDirty(repo, relPath) {
+  const args = ['diff', '--quiet', 'HEAD'];
+  if (relPath) args.push('--', relPath);
+  try {
+    await execFile('git', args, { cwd: repo, maxBuffer: MAX_BUFFER });
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+/** Working-tree file URI for a path relative to the repo root. */
+function worktreeUri(repo, relPath) {
+  return vscode.Uri.file(path.join(repo, relPath.split('/').join(path.sep)));
+}
+
+/** Resolve a context-menu folder resource to { repo, relPath, label }. */
+async function resolveFolder(resource) {
+  if (!(resource instanceof vscode.Uri) || resource.scheme !== 'file') {
+    vscode.window.showWarningMessage('Compare: right-click a folder in the Explorer.');
+    return undefined;
+  }
+  let repo;
+  try {
+    // Resolve from the folder itself (not its parent) so selecting the repo
+    // root still works.
+    repo = await git(['rev-parse', '--show-toplevel'], resource.fsPath);
+  } catch {
+    vscode.window.showWarningMessage('Compare: this folder is not inside a Git repository.');
+    return undefined;
+  }
+  const relPath = path.relative(repo, resource.fsPath).split(path.sep).join('/');
+  return { repo, relPath, label: relPath || path.basename(repo) };
+}
+
+/** Open every changed file of a folder diff in VS Code's multi-file diff editor. */
+async function openFolderDiff(title, entries, makeLeft, makeRight) {
+  const resources = entries.map((e) => [worktreeUri(e.repo, e.path), makeLeft(e), makeRight(e)]);
+  await vscode.commands.executeCommand('vscode.changes', title, resources);
+}
+
+/**
+ * IntelliJ-style "Compare Folder with Previous Version":
+ *  - If the folder has uncommitted changes, diff HEAD against the working tree.
+ *  - Otherwise diff the previous commit that touched the folder against the
+ *    latest one. All changed files open together in the multi-file diff editor.
+ */
+async function compareFolderWithPrevious(resource) {
+  const folder = await resolveFolder(resource);
+  if (!folder) return;
+  const { repo, relPath, label } = folder;
+
+  let entries, makeLeft, makeRight, subtitle;
+  if (await isFolderDirty(repo, relPath)) {
+    entries = await folderChanges(repo, relPath, ['HEAD']);
+    makeLeft = (e) => revisionUri(repo, 'HEAD', e.oldPath || e.path);
+    makeRight = (e) => worktreeUri(repo, e.path);
+    subtitle = 'HEAD ↔ Working Tree';
+  } else {
+    const commits = await folderHistory(repo, relPath, 2);
+    if (commits.length < 2) {
+      vscode.window.showInformationMessage(
+        `Compare: not enough committed history in ${label} to compare with a previous version.`
+      );
+      return;
+    }
+    const [head, prev] = commits;
+    entries = await folderChanges(repo, relPath, [prev.hash, head.hash]);
+    makeLeft = (e) => revisionUri(repo, prev.hash, e.oldPath || e.path);
+    makeRight = (e) => revisionUri(repo, head.hash, e.path);
+    subtitle = `${prev.hash.slice(0, 8)} ↔ ${head.hash.slice(0, 8)}`;
+  }
+
+  if (entries.length === 0) {
+    vscode.window.showInformationMessage(`Compare: no changes found in ${label}.`);
+    return;
+  }
+  entries.forEach((e) => (e.repo = repo));
+  await openFolderDiff(`${label}: ${subtitle}`, entries, makeLeft, makeRight);
+}
+
+/**
+ * IntelliJ-style "Compare Folder with Revision...": pick any commit that touched
+ * the folder, then diff that revision's folder state against the working tree —
+ * every changed file opening together in the multi-file diff editor.
+ */
+async function compareFolderWithRevision(resource) {
+  const folder = await resolveFolder(resource);
+  if (!folder) return;
+  const { repo, relPath, label } = folder;
+
+  const commits = await folderHistory(repo, relPath, 200);
+  if (commits.length === 0) {
+    vscode.window.showInformationMessage(`Compare: ${label} has no committed history yet.`);
+    return;
+  }
+
+  const items = commits.map((c) => ({
+    label: `$(git-commit) ${c.subject}`,
+    description: `${c.author} · ${c.date}`,
+    detail: `${c.hash.slice(0, 8)}  <${c.email}>`,
+    commit: c
+  }));
+  const pick = await vscode.window.showQuickPick(items, {
+    placeHolder: `Select a revision of ${label} to compare with the working tree`,
+    matchOnDescription: true,
+    matchOnDetail: true
+  });
+  if (!pick) return;
+
+  const entries = await folderChanges(repo, relPath, [pick.commit.hash]);
+  if (entries.length === 0) {
+    vscode.window.showInformationMessage(
+      `Compare: ${label} is identical to revision ${pick.commit.hash.slice(0, 8)}.`
+    );
+    return;
+  }
+  entries.forEach((e) => (e.repo = repo));
+  await openFolderDiff(
+    `${label}: ${pick.commit.hash.slice(0, 8)} (${pick.commit.author}) ↔ Working Tree`,
+    entries,
+    (e) => revisionUri(repo, pick.commit.hash, e.oldPath || e.path),
+    (e) => worktreeUri(repo, e.path)
+  );
+}
+
+/**
  * IntelliJ-style "Show History" panel: a flat tree of the commits that touched
  * the current file (newest first). Selecting a row opens that commit's full
  * message + diff via `cwp.openCommit`.
@@ -389,6 +567,8 @@ function activate(context) {
     vscode.workspace.registerTextDocumentContentProvider(SCHEME, new GitContentProvider()),
     vscode.commands.registerCommand('cwp.compareWithPrevious', compareWithPrevious),
     vscode.commands.registerCommand('cwp.compareWithRevision', compareWithRevision),
+    vscode.commands.registerCommand('cwp.compareFolderWithPrevious', compareFolderWithPrevious),
+    vscode.commands.registerCommand('cwp.compareFolderWithRevision', compareFolderWithRevision),
     vscode.commands.registerCommand('cwp.showFileHistory', showFileHistory),
     vscode.commands.registerCommand('cwp.openCommitFile', openCommitFile)
   );

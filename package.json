@@ -2,7 +2,7 @@
   "name": "compare-with-previous",
   "displayName": "IntelliJ-Style Git Tools",
   "description": "IntelliJ-style Git for VS Code: compare with previous/any revision, git blame annotations, and a file-history panel with per-commit diffs.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "jackle",
   "license": "MIT",
   "icon": "icon.png",
@@ -15,7 +15,7 @@
   },
   "homepage": "https://github.com/trilh-dev/vscode-intellij-git-tools#readme",
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.85.0"
   },
   "categories": [
     "SCM Providers",
@@ -46,11 +46,25 @@
         "command": "cwp.toggleBlame",
         "title": "Annotate with Git Blame (Toggle)",
         "category": "Git"
+      },
+      {
+        "command": "cwp.compareFolderWithPrevious",
+        "title": "Compare Folder with Previous Version",
+        "category": "Git"
+      },
+      {
+        "command": "cwp.compareFolderWithRevision",
+        "title": "Compare Folder with Revision...",
+        "category": "Git"
       }
     ],
     "submenus": [
       {
         "id": "cwp.submenu",
+        "label": "Compare"
+      },
+      {
+        "id": "cwp.folderSubmenu",
         "label": "Compare"
       }
     ],
@@ -83,6 +97,11 @@
           "submenu": "cwp.submenu",
           "group": "3_compare@1",
           "when": "resourceScheme == file && !explorerResourceIsFolder"
+        },
+        {
+          "submenu": "cwp.folderSubmenu",
+          "group": "3_compare@1",
+          "when": "resourceScheme == file && explorerResourceIsFolder"
         }
       ],
       "editor/context": [
@@ -116,6 +135,16 @@
           "group": "1_compare@2"
         }
       ],
+      "cwp.folderSubmenu": [
+        {
+          "command": "cwp.compareFolderWithPrevious",
+          "group": "1_compare@1"
+        },
+        {
+          "command": "cwp.compareFolderWithRevision",
+          "group": "1_compare@2"
+        }
+      ],
       "commandPalette": [
         {
           "command": "cwp.compareWithPrevious",
@@ -128,6 +157,14 @@
         {
           "command": "cwp.toggleBlame",
           "when": "editorIsOpen"
+        },
+        {
+          "command": "cwp.compareFolderWithPrevious",
+          "when": "false"
+        },
+        {
+          "command": "cwp.compareFolderWithRevision",
+          "when": "false"
         }
       ]
     }
