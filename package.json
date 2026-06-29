@@ -2,7 +2,7 @@
   "name": "compare-with-previous",
   "displayName": "IntelliJ-Style Git Tools",
   "description": "IntelliJ-style Git for VS Code: compare with previous/any revision, git blame annotations, and a file-history panel with per-commit diffs.",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "publisher": "jackle",
   "license": "MIT",
   "icon": "icon.png",

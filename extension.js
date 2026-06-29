@@ -4,6 +4,7 @@ const path = require('path');
 const util = require('util');
 
 const { activateBlame } = require('./blame');
+const { activateDiffActions } = require('./diff-actions');
 
 const execFile = util.promisify(cp.execFile);
 
@@ -151,10 +152,12 @@ async function compareWithPrevious(resource) {
       );
       return;
     }
+    // Right side is the live (clean) file, not a read-only HEAD revision, so
+    // the per-hunk apply/copy actions can bring the previous version into it.
     olderCommit = commits[1];
     leftUri = revisionUri(repo, olderCommit.hash, relPath);
-    rightUri = revisionUri(repo, commits[0].hash, relPath);
-    rightLabel = `HEAD · ${commits[0].author}`;
+    rightUri = fileUri;
+    rightLabel = `Working Tree · ${commits[0].author}`;
   }
 
   const title = `${name}: ${olderCommit.author} (${olderCommit.date}) ↔ ${rightLabel}`;
@@ -574,6 +577,7 @@ function activate(context) {
   );
 
   activateBlame(context);
+  activateDiffActions(context);
 }
 
 function deactivate() {}

@@ -22,6 +22,21 @@ Right-click a file in the **Explorer**, the **editor**, or an **editor tab** →
 
 Both commands are also available from the Command Palette (`Git: Compare …`).
 
+### Apply changes from the previous version
+
+When the diff's right side is your **editable working tree** (the *Compare with
+Previous Version* dirty case, or *Compare with Revision…*), each changed block
+shows two inline actions on the working-tree side — the VS Code equivalent of
+IntelliJ's per-change apply arrows:
+
+- **◂ Accept** — replaces that block with the previous version's lines in place.
+- **⧉ Copy** — copies the previous version of that block to the clipboard so you
+  can paste it yourself.
+
+The actions recompute after each apply, so line numbers stay correct. Read-only
+diffs (clean *Compare with Previous*, folder diffs, per-commit file diffs) show
+no actions because neither side is editable.
+
 ### Compare a whole folder
 
 Right-click a **folder** in the **Explorer** → **Compare** submenu:
